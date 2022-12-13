@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+metadata:
+  name: squid-config
+data:
+  config: |
+    auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/.squid_users
+    auth_param basic realm proxy
+    acl authenticated proxy_auth REQUIRED
+    http_access allow authenticated
+    http_port 3128
+kind: ConfigMap
+---
+# charlie:charlie_darwin
+apiVersion: v1
+metadata:
+  name: squid-users
+data:
+  users:
+    squid:$apr1$bO6.x.KF$NMbaiC8BQmboBf1jSK3xl0 
+kind: ConfigMap
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: squid-deployment
+  labels:
+    app: squid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: squid
+  template:
+    metadata:
+      labels:
+        app: squid
+    spec:
+      containers:
+      - name: squid
+        image: ubuntu/squid:4.13-21.10_edge
+        ports:
+        - containerPort: 3128
+        volumeMounts:
+        - name: squid-config-vol
+          mountPath: /etc/squid/squid.conf
+          subPath: squid.conf
+        - name: squid-users-vol
+          mountPath: /etc/squid/.squid_users
+          subPath: .squid_users
+      volumes:
+        - name: squid-config-vol
+          configMap:
+            name: squid-config
+            items:
+            - key: config
+              path: squid.conf
+        - name: squid-users-vol
+          configMap:
+            name: squid-users
+            items:
+            - key: users
+              path: .squid_users
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: squid
+spec:
+  selector:
+    app: squid
+  ports:
+    - protocol: TCP
+      port: 3128
+      targetPort: 3128
+  type: LoadBalancer

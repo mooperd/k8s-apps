@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: code-server
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: code-server-andrew
+  namespace: code-server
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - andrew.darwinist.io
+    secretName: wildcard-darwinist-io
+  rules:
+  - host: andrew.darwinist.io
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: code-server-andrew
+            port:
+              number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: code-server-andrew
+ namespace: code-server
+spec:
+ ports:
+ - port: 80
+   targetPort: 8080
+ selector:
+   app: code-server-andrew
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: code-server
+  name: code-server-andrew
+  labels:
+    app: code-server-andrew
+spec:
+  serviceName: code-server-andrew
+  replicas: 1
+  selector:
+    matchLabels:
+      app: code-server-andrew
+  template:
+    metadata:
+      labels:
+        app: code-server-andrew
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+      - name: code-server
+        image: codercom/code-server
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PASSWORD
+          value: "shitsandgiggles"
+        - name: CHARLIE_LINKEDIN_COOKIE
+          value: "AQEDATl7r4cEBESyAAABfvz2LvIAAAF_IQKy8k4AAoRYls1Txu9_lR1stL4B6Rn77YF6ooZQutHVki9F7tUCguzmHED5Mn6g4x-itwJgBnP0zOyrgbu_5So3TUZleQOgF5GYf0TagNFkb7McygWLO5bH"
+        - name: PGDATABASE
+          value: "master"
+        - name: PGPASSWORD
+          value: "shits&giggles"
+        - name: PGUSER
+          value: "charlie"
+        - name: PHANTOMBUSTER_KEY
+          value: "YQLptOPG9zPLzi5nfbTU1l2RWHmQ2Jghs4RaJJgKxVI"
+        - name: STREAK_KEY
+          value: "Basic YTM0OWMxYzQ4OTk3NDM2YzlkNzQzM2U1MTUwZjljNDI6"
+        - name: STREAK_PIPELINE
+          value: "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMZGFyd2luaXN0LmlvDAsSCFdvcmtmbG93GICAhvu-9NkJDA"
+        volumeMounts:
+        - name: home-andrew
+          mountPath: /home/coder
+  volumeClaimTemplates:
+  - metadata:
+      name: home-andrew
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "standard"
+      resources:
+        requests:
+          storage: 40Gi
